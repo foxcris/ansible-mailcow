@@ -1,0 +1,15 @@
+#!/bin/bash
+
+if [ `find {{ MAILCOW_EXTERNAL_LETSENCRYPT_CERTIFICATE_PATH }} -mtime -1 -exec echo '{}' \; | wc -l` != '0' ]
+then
+{% if MAILCOW_USE_TRAEFIK %}
+  cp {{ MAILCOW_EXTERNAL_LETSENCRYPT_CERTIFICATE_PATH }}/certs/{{ MAILCOW_HOSTNAME }}.crt {{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/data/assets/ssl/cert.pem
+  cp {{ MAILCOW_EXTERNAL_LETSENCRYPT_CERTIFICATE_PATH }}/private/{{ MAILCOW_HOSTNAME }}.key {{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/data/assets/ssl/key.pem
+{% else %}
+  cp {{ MAILCOW_EXTERNAL_LETSENCRYPT_CERTIFICATE_PATH }}/fullchain.pem {{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/data/assets/ssl/cert.pem
+  cp {{ MAILCOW_EXTERNAL_LETSENCRYPT_CERTIFICATE_PATH }}/privkey.pem {{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/data/assets/ssl/key.pem
+{% endif %}
+  #reload configuration
+  cd {{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}
+  docker-compose restart postfix-mailcow nginx-mailcow dovecot-mailcow
+fi

@@ -1,0 +1,9 @@
+PATH="/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin"
+#Ansible: mailcow
+{% if MAILCOW_SYNC_EXTERNAL_LETSENCRYPT_CERTIFICATE is defined %}
+0 3 * * * root {{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/sync_external_letsencrypt_certificate.sh
+{% endif %}
+{% if MAILCOW_BACKUP_LOCATION is defined %}
+0 3 * * * root find {{ MAILCOW_BACKUP_LOCATION }} -depth -mtime +{{ MAILCOW_MAX_BACKUPS }} -exec rm -rf '{}' \;
+0 22 * * * root MAILCOW_BACKUP_LOCATION={{ MAILCOW_BACKUP_LOCATION }} {{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/helper-scripts/backup_and_restore.sh backup all
+{% endif %}

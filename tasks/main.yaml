@@ -1,0 +1,182 @@
+
+---
+  - include_role:
+      name: docker
+    vars:
+      DOCKER_USE_WATCHTOWER: false
+  - name: Install required software for mailcow
+    apt:
+      name: [ 'openssl', 'curl', 'git', 'mawk', 'coreutils']
+      update_cache: true
+      state: latest
+  - name: Clone mailcow repo.
+    git:
+      repo: https://github.com/mailcow/mailcow-dockerized
+      version: master
+      dest: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}"
+      clone: yes
+      update: yes
+      force: yes
+
+  - name: Check Hostname
+    assert:
+      that:
+        - not '{{ MAILCOW_HOSTNAME }}' == ''
+      msg: "MAILCOW_HOSTNAME must be set to a FQDN"
+
+  - name: Create a generate_config_non_interactive file with settings from template.
+    template:
+      src: generate_config_non_interactive.j2
+      dest: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/generate_config_non_interactive.sh"
+      mode: a+x
+
+  - name: Append only the non-interactive portion of generate_config.sh.
+    shell: cat generate_config.sh | sed -n -e '/cat << EOF > mailcow.conf/,$p' >> generate_config_non_interactive.sh
+    args:
+      executable: /bin/bash
+      chdir: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}"
+
+  - name: Delete mailcow.conf if already existing
+    file:
+      path: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/mailcow.conf"
+      state: absent
+
+  # intermittently the script uses the busybox version of grep and fails, thus force bash
+  - name: Generate mailcow configuration using non-interactive script (only runs once).
+    shell: ./generate_config_non_interactive.sh
+    args:
+      executable: /bin/bash
+      chdir: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}"
+      creates: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/mailcow.conf"
+
+  - name: Insert nextcloud subdomain into mailcow.conf for SSL certificate generation.
+    lineinfile:
+      path: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/mailcow.conf"
+      regexp: "^ADDITIONAL_SAN"
+      line: "ADDITIONAL_SAN={{ MAILCOW_ADDITIONAL_SAN }}"
+      state: present
+
+  - name: Insert watchdog notify email into mailcow.conf.
+    lineinfile:
+      path: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/mailcow.conf"
+      regexp: "^#WATCHDOG_NOTIFY_EMAIL="
+      line: "WATCHDOG_NOTIFY_EMAIL={{ MAILCOW_WATCHDOG_NOTIFY_EMAIL }}"
+      state: present
+
+  - name: Insert skip_letsencrypt SSL certificate generation.
+    lineinfile:
+      path: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/mailcow.conf"
+      regexp: "^SKIP_LETS_ENCRYPT"
+      line: "SKIP_LETS_ENCRYPT={{ MAILCOW_SKIP_LETS_ENCRYPT }}"
+      state: present
+
+  - name: Set DBPASS
+    lineinfile:
+      path: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/mailcow.conf"
+      regexp: "^DBPASS"
+      line: "DBPASS={{ MAILCOW_DBPASS }}"
+      state: present
+    when: not MAILCOW_DBPASS == ''
+
+  - name: Set DBROOT
+    lineinfile:
+      path: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/mailcow.conf"
+      regexp: "^DBROOT"
+      line: "DBROOT={{ MAILCOW_DBROOT }}"
+      state: present
+    when: not MAILCOW_DBROOT == ''
+
+  - name: Set MAILDIR_SUB
+    lineinfile:
+      path: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/mailcow.conf"
+      regexp: "^MAILDIR_SUB"
+      line: "MAILDIR_SUB={{ MAILCOW_MAILDIR_SUB }}"
+      state: present
+    when: MAILCOW_MAILDIR_SUB is defined
+
+  - name: Disable SOGo integration 
+    lineinfile:
+      path: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/mailcow.conf"
+      regexp: "^#SKIP_SOGO="
+      line: "SKIP_SOGO={{ MAILCOW_SKIP_SOGO }}"
+      state: present
+
+  - name: Use External Proxy
+    yedit:
+      src: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/docker-compose.yml"
+      key: services.nginx-mailcow.ports
+      state: 'absent'
+    when: MAILCOW_USE_EXTERNALPROXY
+
+  - name: Add traefik labels to docker compose
+    yedit:
+      src: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/docker-compose.yml"
+      key: services.nginx-mailcow.labels
+      value: '{{ MAILCOW_TRAEFIK_LABELS }}'
+      state: 'present'
+    when: MAILCOW_USE_TRAEFIK
+    
+  - name: Shutdown containers if they are already running.
+    shell: docker-compose down
+    args:
+      executable: /bin/bash
+      chdir: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}"
+    ignore_errors: yes
+
+  - name: Pull containers.
+    shell: docker-compose pull
+    args:
+      executable: /bin/bash
+      chdir: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}"
+
+  - name: Create script for sync of external letsencrypt certificates
+    template:
+      src: sync_external_letsencrypt_certificate.j2
+      dest: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/sync_external_letsencrypt_certificate.sh"
+      mode: a+x
+    when: MAILCOW_SYNC_EXTERNAL_LETSENCRYPT_CERTIFICATE
+
+  - name: Run script for sync of external letsencrypt certificates
+    shell: ./sync_external_letsencrypt_certificate.sh
+    args:
+      executable: /bin/bash
+      chdir: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}"
+    ignore_errors: yes
+    when: MAILCOW_SYNC_EXTERNAL_LETSENCRYPT_CERTIFICATE
+  
+  - name: Setup Backuplocation
+    file:
+      path: '{{ MAILCOW_BACKUP_LOCATION }}'
+      owner: root
+      group: root
+      mode: u=rwx,g=rx,o=rx 
+      state: directory
+    when: MAILCOW_BACKUP_LOCATION is defined
+
+  - name: Setup cronjobs
+    template:
+      src: mailcow_cron.j2
+      dest: "/etc/cron.d/mailcow"
+      mode: a+x
+    when: MAILCOW_SYNC_EXTERNAL_LETSENCRYPT_CERTIFICATE or MAILCOW_BACKUP_LOCATION is defined
+
+  - name: Reload cron
+    systemd:
+      name: cron
+      state: restarted
+    when: MAILCOW_SYNC_EXTERNAL_LETSENCRYPT_CERTIFICATE or MAILCOW_BACKUP_LOCATION is defined 
+
+  - name: Start containers.
+    shell: docker-compose up -d
+    args:
+      executable: /bin/bash
+      chdir: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}"
+
+  - name: Add a traefik container to the mailcow network, leaving existing containers connected
+    community.general.docker_network:
+      name: mailcowdockerized_mailcow-network
+      connected:
+        - '{{ MAILCOW_TRAEFIK_CONTAINER }}'
+      appends: yes
+    when: MAILCOW_USE_TRAEFIK
+  
