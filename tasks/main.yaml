@@ -1,9 +1,5 @@
 
 ---
-  - include_role:
-      name: docker
-    vars:
-      DOCKER_USE_WATCHTOWER: false
   - name: Install required software for mailcow
     apt:
       name: [ 'openssl', 'curl', 'git', 'mawk', 'coreutils']
