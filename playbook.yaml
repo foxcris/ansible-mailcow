@@ -4,12 +4,6 @@
       - localhost
     become: true
     tasks:
-      - name: Disable exim4 for mailcow, sending mails will be still possible
-        systemd:
-          name: exim4
-          state: stopped
-          masked: yes
-          enabled: no
       # Test Setup without external proxy
       - include_role:
           name: mailcow
