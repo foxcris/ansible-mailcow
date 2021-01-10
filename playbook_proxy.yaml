@@ -6,6 +6,30 @@
     tasks:
       # Test setup wih traefik as external proxy
       - include_role:
+          name: traefik
+        vars:
+          #traefik_dir is not working
+          traefik_dir: /srv/docker/traefik
+          traefik_hostname: 'contabo2.volker-boehme.de'
+          traefik_qs_https: true
+          traefik_qs_log_level: INFO
+          traefik_qs_https_redirect: true
+          traefik_qs_tls_options: true
+          traefik_qs_middlewares: true
+          traefik_qs_exposedbydefault: false
+          traefik_labels: 
+            com.centurylinklabs.watchtower.enable: 'true'
+          #add entrypoint for synapse
+          traefik_confkey_certificatesResolvers:
+            letsencrypt:
+              acme: 
+                httpChallenge:
+                  entryPoint: "http"
+                email: 'volker@volker-boehme.de'
+                storage: /letsencrypt/acme.json 
+                #caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"
+                caServer: "https://acme-v02.api.letsencrypt.org/directory"
+      - include_role:
           name: mailcow
         vars:
           MAILCOW_INSTALL_DIR: 'mailcow'
