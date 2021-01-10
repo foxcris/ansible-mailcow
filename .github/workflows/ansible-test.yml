@@ -28,7 +28,7 @@ jobs:
       # Install required dependencies
       - name: Install required dependencies
         run: |
-          apt install ansible git
+          sudo apt install ansible git
           ansible-galaxy install kwoodson.yedit
 
       # Creat/Configure test setup
