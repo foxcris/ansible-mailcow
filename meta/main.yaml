@@ -1,4 +1,6 @@
 ---
+collections:
+  - community.general
 
 dependencies:
     - kwoodson.yedit
