@@ -1,0 +1,37 @@
+---
+  - name: Playbook to setup mailcow
+    hosts: 
+      - localhost
+    become: true
+    tasks:
+      # Test setup wih traefik as external proxy
+      - include_role:
+          name: mailcow
+        vars:
+          MAILCOW_INSTALL_DIR: 'mailcow'
+          MAILCOW_HOSTNAME: 'mailcow.example.com'
+          MAILCOW_SKIP_LETS_ENCRYPT: 'y'
+          MAILCOW_DBPASS: 'secretdbpass'
+          MAILCOW_DBROOT: 'secretdbrootpass'
+          MAILCOW_USE_EXTERNALPROXY: true
+          MAILCOW_USE_TRAEFIK: true
+          MAILCOW_TRAEFIK_CONTAINER: traefik
+          MAILCOW_TRAEFIK_NETWORK: traefik_proxy
+          MAILCOW_EXTERNAL_LETSENCRYPT_CERTIFICATE_PATH: '/srv/docker/traefik/letsencrypt/certs'
+          MAILCOW_SYNC_EXTERNAL_LETSENCRYPT_CERTIFICATE: true
+          MAILCOW_BACKUP_LOCATION: '/backup/mailcow'
+          MAILCOW_MAILDIR_SUB: ''
+          MAILCOW_TRAEFIK_LABELS: 
+            # May be unnecessary depending on Traefik config, but can't hurt
+            traefik.enable: 'true'
+            # The  container will receive traffic from these subdomains
+            traefik.http.routers.nginx-mailcow.rule: 'Host(`mailcow.example.com`,`mail.example.com`,`imap.example.com`,`pop3.example.com`,`smtp.example.com`,`autodiscover.example.com`,`autoconfig.example.com`)'
+            # address the entrypoint used in traefik config
+            traefik.http.routers.nginx-mailcow.entrypoints: 'https'
+            # (The 'default' certificate resolver must be defined in Traefik config)
+            traefik.http.routers.nginx-mailcow.tls.certResolver: 'letsencrypt'
+            traefik.http.routers.nginx-mailcow.tls.options: 'intermediate@file'
+            traefik.http.routers.nginx-mailcow.middlewares: hsts-header@file,xssfilter-header@file
+            # address the internal destionation
+            traefik.http.services.nginx-mailcow.loadbalancer.server.port: '80'
+            traefik.docker.network: mailcowdockerized_mailcow-network
