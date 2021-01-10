@@ -28,7 +28,7 @@ jobs:
       # Install required dependencies
       - name: Install required dependencies
         run: |
-          sudo apt install ansible git
+          sudo apt install ansible git python3-docker
           ansible-galaxy install kwoodson.yedit
           ansible-galaxy collection install community.general
 
