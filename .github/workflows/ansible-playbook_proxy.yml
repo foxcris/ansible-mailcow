@@ -30,6 +30,7 @@ jobs:
         run: |
           sudo apt install ansible git
           ansible-galaxy install kwoodson.yedit
+          ansible-galaxy collection install community.general
 
       # Creat/Configure test setup
       - name: Creat/Configure test setup
