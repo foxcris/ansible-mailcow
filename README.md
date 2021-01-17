@@ -1,2 +1,175 @@
 # ansible-mailcow
-Ansiblerole to install and setup mailcow
+
+!-- TOC depthFrom:2 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
+
+- [Description](#description)
+- [Installation](#installation)
+- [Requirements](#requirements)
+- [Role Variables](#role-variables)
+	- [In-Depth Configuration](#in-depth-configuration)
+- [Compatibility with  sbaerlocher/ansible.traefik](#compatibility-with-sbaerlocheransibletraefik)
+	- [Variables which need manual action](#variables-which-need-manual-action)
+		- [`traefik_configuration_file`](#traefikconfigurationfile)
+		- [`traefik_api`](#traefikapi)
+		- [`traefik_ping`](#traefikping)
+
+<!-- /TOC -->
+
+## Description
+
+Ansible role to install and setup [mailcow](https://mailcow.github.io/mailcow-dockerized-docs/).
+
+## Installation
+
+```bash
+ansible-galaxy install foxcris.mailcow
+```
+
+## Requirements
+
+### On Mailcow Host
+- Docker
+- Git
+
+### Ansible
+
+collections:
+  - community.general
+
+roles:
+  - kwoodson.yedit
+
+## Configuration
+
+### Role Variables
+
+| Name                              | Default                      | Description                                                      |
+| :-------------------------------- | :--------------------------- | :--------------------------------------------------------------- |
+| `LOCAL_DOCKER_VOLUME_STORAGE_PATH`| `/srv/docker`                | Base path where the mailcow data is stored                       |
+| `MAILCOW_INSTALL_DIR`             | `mailcow`                    | Subfolder in the `LOCAL_DOCKER_VOLUME_STORAGE_PATH` where mailcow specific data is stored |
+| `MAILCOW_HOSTNAME`                | ``                           | FQDN of the mailcow instance.                                    |
+| `MAILCOW_TIMEZONE`                | `Europe/Berlin`              | Timezone used for mailcow                                        |
+| `MAILCOW_SKIP_CLAMD`              | `n`                          | Set to 'y' if clamav should not be used to scan email (values: 'y' or 'n') |
+| `MAILCOW_SKIP_LETS_ENCRYPT`       | `n`               | Set to 'y' if no lets encrypt certificates shall be aquired. Set to 'y' if you want to use MAILCOW_SYNC_EXTERNAL_LETSENCRYPT_CERTIFICATE. (values: 'y' or 'n')|
+| `MAILCOW_SKIP_SOLR`               | `n`                          | Set to 'y' if solr should not be used. (values: 'y' or 'n') |
+| `MAILCOW_SKIP_SOGO`               | `n`                          | Set to 'y' if sogo should not be used. (values: 'y' or 'n') |
+| `MAILCOW_ADDITIONAL_SAN`          | ``                          | Configure additonal SAN values used with lets encrypt. For more information take a look at the mailcow documentation of this value. |
+| `MAILCOW_WATCHDOG_NOTIFY_EMAIL`   | ``                          | Configure an email adress to be used for watchdog notifications |
+| `MAILCOW_DBPASS`                  | ``                           | Password of the mysql database                                   |
+| `MAILCOW_DBROOT`                  | ``                           | Root password of the mysql database                              |
+| `MAILCOW_USE_EXTERNALPROXY`       | `true`                       | Setup Mailcow to be used with an external reverse proxy          |
+| `MAILCOW_USE_TRAEFIK`             | `false`                      | Configure mailcow to use traefik as external reverse proxy       |
+| `MAILCOW_TRAEFIK_CONTAINER`       | `traefik`                    | Name of the treafik container. Only used with MAILCOW_USE_TRAEFIK set to true. |
+| `MAILCOW_TRAEFIK_LABELS`          | undefined              | Can be used to configure lables to be set when traefik is used. Only used with MAILCOW_USE_TRAEFIK set to true.|
+| `MAILCOW_EXTERNAL_LETSENCRYPT_CERTIFICATE_PATH` | undefined      | Path to external ssl certificates. Only used with MAILCOW_SYNC_EXTERNAL_LETSENCRYPT_CERTIFICATE set to true.|
+| `MAILCOW_SYNC_EXTERNAL_LETSENCRYPT_CERTIFICATE` | `false`        | Use external ssl certificates.                                   |
+| `MAILCOW_BACKUP_LOCATION`         | undefined                    | If set a cron job is created to backup mailcow automatically every day |
+| `MAILCOW_MAX_BACKUPS`             | `8`                    | Maximum number of kept backups |
+| `MAILCOW_MAILDIR_SUB`             | undefined                    | If set the configured value is used as the maildir home directory with mailcow. Otherwise default value of mailcow is used. |
+
+
+### Use External SSL certificates
+
+If you want to use external ssl certifiactes set MAILCOW_SYNC_EXTERNAL_LETSENCRYPT_CERTIFICATE to true. A script to sync the external certificates is created.
+
+With MAILCOW_USE_TRAEFIK set to true the following paths are used in the sync script:
+```
+{{ MAILCOW_EXTERNAL_LETSENCRYPT_CERTIFICATE_PATH }}/certs/{{ MAILCOW_HOSTNAME }}.crt 
+{{ MAILCOW_EXTERNAL_LETSENCRYPT_CERTIFICATE_PATH }}/private/{{ MAILCOW_HOSTNAME }}.key. 
+```
+I propose to use the [ldez/traefik-certs-dumper](https://github.com/ldez/traefik-certs-dumper) to automatically export all certificates generated by traefic.
+
+With MAILCOW_USE_TRAEFIK set to false the following paths are used in the sync script:
+```
+{{ MAILCOW_EXTERNAL_LETSENCRYPT_CERTIFICATE_PATH }}/fullchain.pem
+{{ MAILCOW_EXTERNAL_LETSENCRYPT_CERTIFICATE_PATH }}/privkey.pem
+```
+
+### Examples
+
+#### Use Mailcow Server with traefik as reverse proxy
+
+For the setup of traefik i used my an addepted role of [ansible.treafik](https://github.com/foxcris/ansible.traefik). Original role can be found [here](https://github.com/arillso/ansible.traefik).
+
+```
+      - include_role:
+          name: traefik
+        vars:
+          #traefik_dir is not working
+          traefik_dir: /srv/docker/traefik
+          traefik_hostname: 'myserver.example.com'
+          traefik_qs_https: true
+          traefik_qs_log_level: INFO
+          traefik_qs_https_redirect: true
+          traefik_qs_tls_options: true
+          traefik_qs_middlewares: true
+          traefik_qs_exposedbydefault: false
+          traefik_labels: 
+            com.centurylinklabs.watchtower.enable: 'true'
+          #add entrypoint for synapse
+          traefik_ports:
+            - 80:80
+            - 443:443
+            - 8448:8448
+          traefik_confkey_entryPoints:
+            - synapse:
+                address: :8448
+          traefik_confkey_certificatesResolvers:
+            letsencrypt:
+              acme: 
+                httpChallenge:
+                  entryPoint: "http"
+                email: 'myemail@example.com'
+                storage: /letsencrypt/acme.json 
+                caServer: "https://acme-v02.api.letsencrypt.org/directory"
+      - name: Configure traefik-certs-dumper
+        community.general.docker_container:
+          name: traefik-certs-dumper
+          image: ldez/traefik-certs-dumper:latest-amd64
+          entrypoint: sh -c '
+            apk add jq
+            ; while ! [ -e /data/acme.json ]
+            || ! [ `jq ".[] | .Certificates | length" /data/acme.json` != 0 ]; do
+            sleep 1
+            ; done
+            && traefik-certs-dumper file --version v2 --watch
+            --source /data/acme.json --dest /data/certs'
+          volumes:
+            - /srv/docker/traefik/letsencrypt:/data
+          restart: yes
+          restart_policy: always
+          labels:
+            com.centurylinklabs.watchtower.enable: 'true'
+          state: started
+      - include_role:
+          name: mailcow
+        vars:
+          MAILCOW_INSTALL_DIR: 'mailcow'
+          MAILCOW_HOSTNAME: 'mailcow.example.com'
+          MAILCOW_SKIP_LETS_ENCRYPT: 'y'
+          MAILCOW_DBPASS: 'secretdbpass'
+          MAILCOW_DBROOT: 'secretdbrootpass'
+          MAILCOW_USE_EXTERNALPROXY: true
+          MAILCOW_USE_TRAEFIK: true
+          MAILCOW_TRAEFIK_CONTAINER: traefik
+          MAILCOW_TRAEFIK_NETWORK: traefik_proxy
+          MAILCOW_EXTERNAL_LETSENCRYPT_CERTIFICATE_PATH: '/srv/docker/traefik/letsencrypt/certs'
+          MAILCOW_SYNC_EXTERNAL_LETSENCRYPT_CERTIFICATE: true
+          MAILCOW_BACKUP_LOCATION: '/backup/mailcow'
+          MAILCOW_MAILDIR_SUB: ''
+          MAILCOW_WATCHDOG_NOTIFY_EMAIL: 'externalmail@external.com'
+          MAILCOW_TRAEFIK_LABELS: 
+            # May be unnecessary depending on Traefik config, but can't hurt
+            traefik.enable: 'true'
+            # The  container will receive traffic from these subdomains
+            traefik.http.routers.nginx-mailcow.rule: 'Host(`mailcow.example.com`,`mail.example.com`,`imap.example.com`,`pop3.example.com`,`smtp.example.com`,`autodiscover.example.com`,`autoconfig.example.com`)'
+            # address the entrypoint used in traefik config
+            traefik.http.routers.nginx-mailcow.entrypoints: 'https'
+            # (The 'default' certificate resolver must be defined in Traefik config)
+            traefik.http.routers.nginx-mailcow.tls.certResolver: 'letsencrypt'
+            traefik.http.routers.nginx-mailcow.tls.options: 'intermediate@file'
+            traefik.http.routers.nginx-mailcow.middlewares: hsts-header@file,xssfilter-header@file
+            # address the internal destionation
+            traefik.http.services.nginx-mailcow.loadbalancer.server.port: '80'
+            traefik.docker.network: mailcowdockerized_mailcow-network
+```
