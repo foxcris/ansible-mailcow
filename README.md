@@ -7,7 +7,7 @@
 - [Configuration](#configuration)
 	- [Role Variables](#role-variables)
 	- [Use External SSL certificates](#use-external-ssl-certificates)
-	- [Exmaples](#examples)
+	- [Examples](#examples)
 
 ## Description
 
