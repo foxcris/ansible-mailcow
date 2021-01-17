@@ -1,15 +1,13 @@
 # ansible-mailcow
 
-<!-- TOC depthFrom:2 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
 - [Description](#description)
 - [Installation](#installation)
 - [Requirements](#requirements)
 - [Configuration](#configuration)
 	- [Role Variables](#role-variables)
-- [Use External SSL certificates](#use-external-ssl-certificates)
-
-<!-- /TOC -->
+	- [Use External SSL certificates](#use-external-ssl-certificates)
+	- [Exmaples](#examples)
 
 ## Description
 
