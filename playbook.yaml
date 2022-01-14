@@ -15,4 +15,3 @@
           MAILCOW_DBROOT: 'secretdbrootpass'
           MAILCOW_BACKUP_LOCATION: '/backup/mailcow'
           MAILCOW_MAILDIR_SUB: ''
-          MAILCOW_SKIP_LETS_ENCRYPT: 'n'

@@ -4,3 +4,21 @@ collections:
 
 dependencies:
     - kwoodson.yedit
+
+galaxy_info:
+  role_name: mailcow
+  description: Role to deploy mailcow.
+  license: MIT
+  min_ansible_version: 2.9
+  platforms:
+    - name: Ubuntu
+      versions:
+        - bionic
+    - name: Debian
+      versions:
+        - buster
+
+  galaxy_tags:
+    - mailcow
+    - treafik
+    - docker

@@ -1,19 +1,13 @@
 # ansible-mailcow
 
-!-- TOC depthFrom:2 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
 - [Description](#description)
 - [Installation](#installation)
 - [Requirements](#requirements)
-- [Role Variables](#role-variables)
-	- [In-Depth Configuration](#in-depth-configuration)
-- [Compatibility with  sbaerlocher/ansible.traefik](#compatibility-with-sbaerlocheransibletraefik)
-	- [Variables which need manual action](#variables-which-need-manual-action)
-		- [`traefik_configuration_file`](#traefikconfigurationfile)
-		- [`traefik_api`](#traefikapi)
-		- [`traefik_ping`](#traefikping)
-
-<!-- /TOC -->
+- [Configuration](#configuration)
+	- [Role Variables](#role-variables)
+	- [Use External SSL certificates](#use-external-ssl-certificates)
+	- [Examples](#examples)
 
 ## Description
 
