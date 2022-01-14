@@ -9,6 +9,7 @@
     git:
       repo: https://github.com/mailcow/mailcow-dockerized
       version: master
+      umask: '022'
       dest: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}"
       clone: yes
       update: yes
