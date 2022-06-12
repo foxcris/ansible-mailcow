@@ -11,5 +11,5 @@ then
 {% endif %}
   #reload configuration
   cd {{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}
-  docker-compose restart postfix-mailcow nginx-mailcow dovecot-mailcow
+  docker compose restart postfix-mailcow nginx-mailcow dovecot-mailcow
 fi

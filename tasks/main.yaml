@@ -113,15 +113,22 @@
       state: 'present'
     when: MAILCOW_USE_TRAEFIK
     
+  # - name: Setup ipv6 with docker-compose.override.yml
+  #   template:
+  #     src: docker-compose.override.j2
+  #     dest: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/docker-compose.override.yml"
+  #     mode: a+x
+  #   when: (MAILCOW_USE_IPV6 == true) and MAILCOW_IPV6 is defined
+
   - name: Shutdown containers if they are already running.
-    shell: docker-compose down
+    shell: docker compose down
     args:
       executable: /bin/bash
       chdir: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}"
     ignore_errors: yes
 
   - name: Pull containers.
-    shell: docker-compose pull
+    shell: docker compose pull
     args:
       executable: /bin/bash
       chdir: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}"
@@ -164,7 +171,7 @@
     when: MAILCOW_SYNC_EXTERNAL_LETSENCRYPT_CERTIFICATE or MAILCOW_BACKUP_LOCATION is defined 
 
   - name: Start containers.
-    shell: docker-compose up -d
+    shell: docker compose up -d
     args:
       executable: /bin/bash
       chdir: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}"

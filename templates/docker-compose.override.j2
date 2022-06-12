@@ -1,0 +1,29 @@
+{% if MAILCOW_IPV6 is defined %}
+version: '2.1'
+services:
+
+    dovecot-mailcow:
+      ports:
+        - '{{ MAILCOW_IPV6 }}:143:143'
+        - '{{ MAILCOW_IPV6 }}:993:993'
+        - '{{ MAILCOW_IPV6 }}:110:110'
+        - '{{ MAILCOW_IPV6 }}:995:995'
+        - '{{ MAILCOW_IPV6 }}:4190:4190'
+
+    postfix-mailcow:
+      ports:
+        - '{{ MAILCOW_IPV6 }}:25:25'
+        - '{{ MAILCOW_IPV6 }}:465:465'
+        - '{{ MAILCOW_IPV6 }}:587:587'
+
+
+{% if MAILCOW_USE_EXTERNALPROXY %}
+
+    nginx-mailcow:
+      ports:
+        - '{{ MAILCOW_IPV6 }}:80:80'
+        - '{{ MAILCOW_IPV6 }}:443:443'
+
+{% endif %}
+
+{% endif %}
