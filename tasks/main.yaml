@@ -105,20 +105,12 @@
       state: 'absent'
     when: MAILCOW_USE_EXTERNALPROXY
 
-  - name: Add traefik labels to docker compose
-    yedit:
-      src: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/docker-compose.yml"
-      key: services.nginx-mailcow.labels
-      value: '{{ MAILCOW_TRAEFIK_LABELS }}'
-      state: 'present'
+  - name: Setup docker-compose.override.yml
+    template:
+      src: docker-compose.override.j2
+      dest: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/docker-compose.override.yml"
+      mode: a+x
     when: MAILCOW_USE_TRAEFIK
-    
-  # - name: Setup ipv6 with docker-compose.override.yml
-  #   template:
-  #     src: docker-compose.override.j2
-  #     dest: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}/docker-compose.override.yml"
-  #     mode: a+x
-  #   when: (MAILCOW_USE_IPV6 == true) and MAILCOW_IPV6 is defined
 
   - name: Shutdown containers if they are already running.
     shell: docker compose down
@@ -175,12 +167,3 @@
     args:
       executable: /bin/bash
       chdir: "{{ LOCAL_DOCKER_VOLUME_STORAGE_PATH }}/{{ MAILCOW_INSTALL_DIR }}"
-
-  - name: Add a traefik container to the mailcow network, leaving existing containers connected
-    community.general.docker_network:
-      name: mailcowdockerized_mailcow-network
-      connected:
-        - '{{ MAILCOW_TRAEFIK_CONTAINER }}'
-      appends: yes
-    when: MAILCOW_USE_TRAEFIK
-  
